@@ -98,7 +98,8 @@
     "dobetterweb/uses-http2",
     "dobetterweb/uses-optimized-images",
     "dobetterweb/uses-responsive-images",
-    "dobetterweb/uses-passive-event-listeners"
+    "dobetterweb/uses-passive-event-listeners",
+    "dobetterweb/uses-request-compression"
   ],
 
   "aggregations": [{
@@ -297,7 +298,11 @@
       "audits": {
         "unused-css-rules": {},
         "uses-optimized-images": {},
+<<<<<<< HEAD
         "uses-responsive-images": {}
+=======
+        "uses-request-compression": {}
+>>>>>>> Added audit for request compression (gzip & br)
       }
     }, {
       "name": "Using modern CSS features",
