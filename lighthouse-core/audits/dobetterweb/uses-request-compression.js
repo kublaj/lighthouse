@@ -15,19 +15,18 @@
  * limitations under the License.
  */
 /*
- * @fileoverview This audit determines if the images used are sufficiently larger
- * than Lighthouse optimized versions of the images (as determined by the gatherer).
- * Audit will fail if one of the conditions are met:
- *   * There is at least one JPEG or bitmap image that was larger than canvas encoded JPEG.
- *   * There is at least one image that would have saved more than 50KB by using WebP.
- *   * The savings of moving all images to WebP is greater than 100KB.
+ * @fileoverview Audit a page to ensure that resources loaded with
+ * gzip/br/deflate compression.
  */
 'use strict';
 
 const Audit = require('../audit');
 const Formatter = require('../../formatters/formatter');
 
-class UsesRequestCompression extends Audit {
+const KB_IN_BYTES = 1024;
+const compressionTypes = ['gzip', 'br', 'deflate']
+
+class CompressesResponses extends Audit {
   /**
    * @return {!AuditMeta}
    */
@@ -35,8 +34,9 @@ class UsesRequestCompression extends Audit {
     return {
       category: 'Performance',
       name: 'uses-request-compression',
-      description: 'Site uses GZIP/BROTLI compression',
-      helpText: 'Requests should be optimized to save network bytes.',
+      description: 'Server responses are compressed using GZIP or BROTLI.',
+      helpText: 'Requests should be optimized to save network bytes.' +
+        ' [Learn more](https://developers.google.com/web/fundamentals/performance/optimizing-content-efficiency/optimize-encoding-and-transfer).',
       requiredArtifacts: ['networkRecords']
     };
   }
@@ -48,16 +48,23 @@ class UsesRequestCompression extends Audit {
   static audit(artifacts) {
     const networkRecords = artifacts.networkRecords[Audit.DEFAULT_PASS];
 
-    // Filter requests that are on the same host as the page and not over h2.
+    // Filter requests that are text based and have gzip/br encoding.
     const resources = networkRecords.filter(record => {
       return record._resourceType && record._resourceType._isTextType &&
-        !record._responseHeaders.find(header =>
-          header.name.toLowerCase() === 'content-encoding' &&
-          (header.value === 'gzip' || header.value === 'br')
-        );
+          record._resourceSize > 1000 &&
+          !record._responseHeaders.find(header =>
+             header.name.toLowerCase() === 'content-encoding' &&
+             compressionTypes.includes(header.value)
+          );
     }).map(record => {
+      const originalKb = record._resourceSize / KB_IN_BYTES;
+      const savings = originalKb * 2 / 3;
+      const percent = Math.round(savings / originalKb * 100);
+
+      const label = `${Math.round(originalKb)} KB total, GZIP savings: ${percent}%`;
+
       return {
-        label: record.protocol,
+        label: label,
         url: record.url // .url is a getter and not copied over for the assign.
       };
     });
@@ -65,12 +72,12 @@ class UsesRequestCompression extends Audit {
 
     let displayValue = '';
     if (resources.length > 1) {
-      displayValue = `${resources.length} requests were not handled with gzip/brottli compression`;
+      displayValue = `${resources.length} requests were not handled with GZIP/BROTTLI compression`;
     } else if (resources.length === 1) {
-      displayValue = `${resources.length} request was not handled with gzip/brottli compression`;
+      displayValue = `${resources.length} request was not handled with GZIP/brottli compression`;
     }
 
-    return UsesRequestCompression.generateAuditResult({
+    return CompressesResponses.generateAuditResult({
       rawValue: resources.length === 0,
       displayValue: displayValue,
       extendedInfo: {
@@ -81,4 +88,4 @@ class UsesRequestCompression extends Audit {
   }
 }
 
-module.exports = UsesRequestCompression;
+module.exports = CompressesResponses;
