@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-/* global window, document */
+/* global ga, logger */
 
 'use strict';
 
@@ -26,6 +26,13 @@ class LighthouseReport {
    */
   constructor(lhresults) {
     this.json = lhresults || null;
+    this._copyAttempt = false;
+
+    this.onCopy = this.onCopy.bind(this);
+    this.onExportButtonClick = this.onExportButtonClick.bind(this);
+    this.onExport = this.onExport.bind(this);
+    this.onKeyDown = this.onKeyDown.bind(this);
+
     this._addEventListeners();
   }
 
@@ -46,6 +53,126 @@ class LighthouseReport {
     if (headerContainer) {
       const toggleButton = headerContainer.querySelector('.js-header-toggle');
       toggleButton.addEventListener('click', () => headerContainer.classList.toggle('expanded'));
+    }
+
+    this.exportButton = document.querySelector('.js-export');
+    if (this.exportButton) {
+      this.exportButton.addEventListener('click', this.onExportButtonClick);
+      const dropdown = document.querySelector('.export-dropdown');
+      dropdown.addEventListener('click', this.onExport);
+
+      document.addEventListener('copy', this.onCopy);
+    }
+  }
+
+  /**
+   * Handler copy events.
+   */
+  onCopy(e) {
+    // Only handle copy button presses (e.g. ignore the user copying page text).
+    if (this._copyAttempt) {
+      // We want to write our own data to the clipboard, not the user's text selection.
+      e.preventDefault();
+      e.clipboardData.setData('text/plain', JSON.stringify(this.json, null, 2));
+      logger.log('Report JSON copied to clipboard');
+    }
+
+    this._copyAttempt = false;
+  }
+
+  /**
+   * Copies the report JSON to the clipboard (if supported by the browser).
+   */
+  onCopyButtonClick() {
+    if (window.ga) {
+      ga('send', 'event', 'report', 'copy');
+    }
+
+    try {
+      if (document.queryCommandSupported('copy')) {
+        this._copyAttempt = true;
+
+        // Note: In Safari 10.0.1, execCommand('copy') returns true if there's
+        // a valid text selection on the page. See http://caniuse.com/#feat=clipboard.
+        const successful = document.execCommand('copy');
+        if (!successful) {
+          this._copyAttempt = false; // Prevent event handler from seeing this as a copy attempt.
+          logger.warn('Your browser does not support copy to clipboard.');
+        }
+      }
+    } catch (err) {
+      this._copyAttempt = false;
+      logger.log(err.message);
+    }
+  }
+
+  closeExportDropdown() {
+    this.exportButton.classList.remove('active');
+  }
+
+  /**
+   * Click handler for export button.
+   */
+  onExportButtonClick(e) {
+    e.preventDefault();
+    e.target.classList.toggle('active');
+    document.addEventListener('keydown', this.onKeyDown);
+  }
+
+  /**
+   * Handler for "export as" button.
+   */
+  onExport(e) {
+    e.preventDefault();
+
+    if (!e.target.dataset.action) {
+      return;
+    }
+
+    switch (e.target.dataset.action) {
+      case 'copy':
+        this.onCopyButtonClick();
+        break;
+      case 'print':
+        window.print();
+        break;
+      case 'save-json': {
+        const jsonStr = JSON.stringify(this.json, null, 2);
+        this._saveFile(new Blob([jsonStr], {type: 'application/json'}));
+        break;
+      }
+      case 'save-html': {
+        let htmlStr = '';
+
+        // Since Viewer generates its page HTML dynamically from report JSON,
+        // run the ReportGenerator. For everything else, the page's HTML is
+        // already the final product.
+        if (e.target.dataset.context !== 'viewer') {
+          htmlStr = document.documentElement.outerHTML;
+        } else {
+          const reportGenerator = new ReportGenerator();
+          htmlStr = reportGenerator.generateHTML(this.json, 'cli');
+        }
+
+        try {
+          this._saveFile(new Blob([htmlStr], {type: 'text/html'}));
+        } catch (err) {
+          logger.error('Could not export as HTML. ' + err.message);
+        }
+        break;
+      }
+    }
+
+    this.closeExportDropdown();
+    document.removeEventListener('keydown', this.onKeyDown);
+  }
+
+  /**
+   * Keydown handler for the document.
+   */
+  onKeyDown(e) {
+    if (e.keyCode === 27) { // ESC
+      this.closeExportDropdown();
     }
   }
 
@@ -99,10 +226,36 @@ class LighthouseReport {
       });
     }
   }
+
+  /**
+   * Downloads a file (blob) using a[download].
+   * @param {Blob|File} blob The file to save.
+   */
+  _saveFile(blob) {
+    const filename = getFilenamePrefix({
+      url: this.json.url,
+      generatedTime: this.json.generatedTime
+    });
+
+    const ext = blob.type.match('json') ? '.json' : '.html';
+
+    const a = document.createElement('a');
+    a.download = `${filename}${ext}`;
+    a.href = URL.createObjectURL(blob);
+    a.click();
+
+    setTimeout(_ => URL.revokeObjectURL(a.href), 500); // cleanup.
+  }
 }
 
-// If in Node, allow others to require us.  By default, browser code can juse
-// use the LighthouseReport class.
-if (typeof module !== 'undefined') {
+let ReportGenerator;
+if (typeof module !== 'undefined' && module.exports) {
+  // Browser code can just use the LighthouseReport class as-is. If we're in Node,
+  // allow require().
   module.exports = LighthouseReport;
+
+  ReportGenerator = require('../../../lighthouse-core/report/report-generator');
+  // TODO: We only need getFilenamePrefix from asset-saver. Tree shake!
+  window.getFilenamePrefix = require('../../../lighthouse-core/lib/asset-saver').getFilenamePrefix;
 }
+

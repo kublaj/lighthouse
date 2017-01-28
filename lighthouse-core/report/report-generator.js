@@ -222,7 +222,10 @@ class ReportGenerator {
     if (reportContext === 'devtools') {
       return [];
     } else {
-      return [fs.readFileSync(path.join(__dirname, './scripts/lighthouse-report.js'), 'utf8')];
+      return [
+        fs.readFileSync(path.join(__dirname, './scripts/logger.js'), 'utf8'),
+        fs.readFileSync(path.join(__dirname, './scripts/lighthouse-report.js'), 'utf8')
+      ];
     }
   }
 
