@@ -42,6 +42,7 @@
       "dobetterweb/geolocation-on-start",
       "dobetterweb/notification-on-start",
       "dobetterweb/optimized-images",
+      "dobetterweb/response-compression",
       "dobetterweb/tags-blocking-first-paint",
       "dobetterweb/websql"
     ]
@@ -298,11 +299,8 @@
       "audits": {
         "unused-css-rules": {},
         "uses-optimized-images": {},
-<<<<<<< HEAD
-        "uses-responsive-images": {}
-=======
+        "uses-responsive-images": {},
         "uses-request-compression": {}
->>>>>>> Added audit for request compression (gzip & br)
       }
     }, {
       "name": "Using modern CSS features",

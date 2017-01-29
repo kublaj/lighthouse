@@ -21,10 +21,11 @@
 'use strict';
 
 const Audit = require('../audit');
+const URL = require('../../lib/url-shim');
 const Formatter = require('../../formatters/formatter');
 
 const KB_IN_BYTES = 1024;
-const compressionTypes = ['gzip', 'br', 'deflate']
+const TOTAL_WASTED_BYTES_THRESHOLD = 100 * KB_IN_BYTES;
 
 class CompressesResponses extends Audit {
   /**
@@ -34,10 +35,10 @@ class CompressesResponses extends Audit {
     return {
       category: 'Performance',
       name: 'uses-request-compression',
-      description: 'Server responses are compressed using GZIP or BROTLI.',
+      description: 'Server responses are compressed using GZIP, BROTLI or DEFLATE.',
       helpText: 'Requests should be optimized to save network bytes.' +
         ' [Learn more](https://developers.google.com/web/fundamentals/performance/optimizing-content-efficiency/optimize-encoding-and-transfer).',
-      requiredArtifacts: ['networkRecords']
+      requiredArtifacts: ['ResponseCompression', 'networkRecords']
     };
   }
 
@@ -48,41 +49,62 @@ class CompressesResponses extends Audit {
   static audit(artifacts) {
     const networkRecords = artifacts.networkRecords[Audit.DEFAULT_PASS];
 
-    // Filter requests that are text based and have gzip/br encoding.
-    const resources = networkRecords.filter(record => {
-      return record._resourceType && record._resourceType._isTextType &&
-          record._resourceSize > 1000 &&
-          !record._responseHeaders.find(header =>
-             header.name.toLowerCase() === 'content-encoding' &&
-             compressionTypes.includes(header.value)
-          );
-    }).map(record => {
-      const originalKb = record._resourceSize / KB_IN_BYTES;
-      const savings = originalKb * 2 / 3;
-      const percent = Math.round(savings / originalKb * 100);
-
-      const label = `${Math.round(originalKb)} KB total, GZIP savings: ${percent}%`;
-
-      return {
-        label: label,
-        url: record.url // .url is a getter and not copied over for the assign.
-      };
+    return artifacts.requestNetworkThroughput(networkRecords).then(networkThroughput => {
+      return CompressesResponses.audit_(artifacts, networkThroughput);
     });
+  }
 
+  /**
+   * @param {!Artifacts} artifacts
+   * @param {number} networkThroughput
+   * @return {!AuditResult}
+   */
+  static audit_(artifacts, networkThroughput) {
+    const uncompressedResponses = artifacts.ResponseCompression;
+
+    let totalWastedBytes = 0;
+    const results = uncompressedResponses.reduce((results, record) => {
+      const originalSize = record.resourceSize;
+      const gzipSize = record.gzipSize;
+      const gzipSavings = originalSize - gzipSize;
+
+      // allow a pass if we don't get 10% savings or less than 1400 bytes
+      if (gzipSize / originalSize > 0.9 || gzipSavings < 1400) {
+        return results;
+      }
+
+      totalWastedBytes += gzipSavings;
+      const url = URL.getDisplayName(record.url);
+      results.push({
+        url,
+        total: `${originalSize} KB`,
+        gzipSavings: `${Math.round(100 * gzipSize / originalSize)}%`,
+      });
+
+      return results;
+    }, []);
 
     let displayValue = '';
-    if (resources.length > 1) {
-      displayValue = `${resources.length} requests were not handled with GZIP/BROTTLI compression`;
-    } else if (resources.length === 1) {
-      displayValue = `${resources.length} request was not handled with GZIP/brottli compression`;
+    if (totalWastedBytes > 1000) {
+      const totalWastedKb = Math.round(totalWastedBytes / KB_IN_BYTES);
+      // Only round to nearest 10ms since we're relatively hand-wavy
+      const totalWastedMs = Math.round(totalWastedBytes / networkThroughput * 100) * 10;
+      displayValue = `${totalWastedKb}KB (~${totalWastedMs}ms) potential savings`;
     }
 
     return CompressesResponses.generateAuditResult({
-      rawValue: resources.length === 0,
-      displayValue: displayValue,
+      displayValue,
+      rawValue: totalWastedBytes < TOTAL_WASTED_BYTES_THRESHOLD,
       extendedInfo: {
-        formatter: Formatter.SUPPORTED_FORMATS.URLLIST,
-        value: resources
+        formatter: Formatter.SUPPORTED_FORMATS.TABLE,
+        value: {
+          results,
+          tableHeadings: {
+            url: 'URL',
+            total: 'Original (KB)',
+            gzipSavings: 'GZIP Savings (%)',
+          }
+        }
       }
     });
   }
