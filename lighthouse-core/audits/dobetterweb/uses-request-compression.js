@@ -75,15 +75,17 @@ class CompressesResponses extends Audit {
 
       totalWastedBytes += gzipSavings;
       const url = URL.getDisplayName(record.url);
+      const totalKb = Math.round(originalSize / KB_IN_BYTES);
       results.push({
         url,
-        total: `${originalSize} KB`,
+        total: `${totalKb} KB`,
         gzipSavings: `${Math.round(100 * gzipSize / originalSize)}%`,
       });
 
       return results;
     }, []);
 
+    let debugString;
     let displayValue = '';
     if (totalWastedBytes > 1000) {
       const totalWastedKb = Math.round(totalWastedBytes / KB_IN_BYTES);
@@ -94,6 +96,7 @@ class CompressesResponses extends Audit {
 
     return CompressesResponses.generateAuditResult({
       displayValue,
+      debugString,
       rawValue: totalWastedBytes < TOTAL_WASTED_BYTES_THRESHOLD,
       extendedInfo: {
         formatter: Formatter.SUPPORTED_FORMATS.TABLE,

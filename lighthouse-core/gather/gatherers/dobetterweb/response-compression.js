@@ -22,7 +22,6 @@
 'use strict';
 
 const Gatherer = require('../gatherer');
-const URL = require('../../../lib/url-shim');
 
 const compressionTypes = ['gzip', 'br', 'deflate'];
 
@@ -35,7 +34,7 @@ class ResponseCompression extends Gatherer {
     return networkRecords.reduce((prev, record) => {
       const isTextBasedResource = record._resourceType && record._resourceType._isTextType;
       const isContentEncoded = isTextBasedResource &&
-        record.resourceSize &&
+        record._resourceSize &&
         !record._responseHeaders.find(header =>
           header.name.toLowerCase() === 'content-encoding' &&
           compressionTypes.includes(header.value)
@@ -64,7 +63,7 @@ class ResponseCompression extends Gatherer {
       return Object.assign({}, {
         gzipSize,
       }, record);
-    })
+    });
   }
 }
 
