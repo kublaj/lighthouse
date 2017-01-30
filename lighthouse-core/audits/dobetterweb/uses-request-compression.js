@@ -75,11 +75,12 @@ class CompressesResponses extends Audit {
 
       totalWastedBytes += gzipSavings;
       const url = URL.getDisplayName(record.url);
-      const totalKb = Math.round(originalSize / KB_IN_BYTES);
+      const totalKb = originalSize / KB_IN_BYTES;
+      const gzipSavingsKb = gzipSavings / KB_IN_BYTES;
       results.push({
         url,
-        total: `${totalKb} KB`,
-        gzipSavings: `${Math.round(100 * gzipSize / originalSize)}%`,
+        total: `${totalKb.toLocaleString()} KB`,
+        gzipSavings: `${gzipSavingsKb.toLocaleString()} KB`,
       });
 
       return results;
@@ -105,7 +106,7 @@ class CompressesResponses extends Audit {
           tableHeadings: {
             url: 'URL',
             total: 'Original (KB)',
-            gzipSavings: 'GZIP Savings (%)',
+            gzipSavings: 'GZIP Savings (KB)',
           }
         }
       }
