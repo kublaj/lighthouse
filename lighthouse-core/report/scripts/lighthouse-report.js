@@ -39,11 +39,6 @@ class LighthouseReport {
   _addEventListeners() {
     this._setupExpandDetailsWhenPrinting();
 
-    const printButton = document.querySelector('.js-print');
-    if (printButton) {
-      printButton.addEventListener('click', _ => window.print());
-    }
-
     const openButton = document.querySelector('.js-open');
     if (openButton) {
       openButton.addEventListener('click', this.sendJSONReport.bind(this));
