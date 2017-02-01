@@ -39,11 +39,6 @@ class LighthouseReport {
   _addEventListeners() {
     this._setupExpandDetailsWhenPrinting();
 
-    const openButton = document.querySelector('.js-open');
-    if (openButton) {
-      openButton.addEventListener('click', this.sendJSONReport.bind(this));
-    }
-
     const headerContainer = document.querySelector('.js-header-container');
     if (headerContainer) {
       const toggleButton = headerContainer.querySelector('.js-header-toggle');
@@ -127,6 +122,9 @@ class LighthouseReport {
     switch (e.target.dataset.action) {
       case 'copy':
         this.onCopyButtonClick();
+        break;
+      case 'open-viewer':
+        this.sendJSONReport();
         break;
       case 'print':
         window.print();

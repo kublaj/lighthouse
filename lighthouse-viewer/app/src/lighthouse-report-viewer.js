@@ -74,9 +74,6 @@ class LighthouseViewerReport extends LighthouseReport {
     if (gistURLInput) {
       gistURLInput.addEventListener('change', this.onInputChange);
     }
-
-    // Disable "Open in Lighthouse Viewer" button. We're already in the viewer.
-    this.disableButton(document.querySelector('.js-open'));
   }
 
   enableButton(button) {

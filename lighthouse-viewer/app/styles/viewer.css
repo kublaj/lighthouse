@@ -92,8 +92,7 @@
   margin-top: 16px;
   display: none;
 }
-.share:disabled,
-.open:disabled {
+.share:disabled {
   opacity: 0.2;
   cursor: default;
 }
