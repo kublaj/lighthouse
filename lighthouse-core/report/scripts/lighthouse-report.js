@@ -227,7 +227,7 @@ class LighthouseReport {
    * @param {Blob|File} blob The file to save.
    */
   _saveFile(blob) {
-    const filename = getFilenamePrefix({
+    const filename = window.getFilenamePrefix({
       url: this.json.url,
       generatedTime: this.json.generatedTime
     });

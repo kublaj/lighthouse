@@ -398,8 +398,8 @@ body {
   flex-direction: row;
   align-items: center;
   justify-content: flex-start;
-  padding: 0 var(--heading-line-height) 0 0;
   border-bottom: 1px solid #ebebeb;
+  padding-right: 14px;
   position: fixed;
   width: calc(100vw - var(--report-menu-width));
   max-width: calc( var(--report-width) - var(--report-menu-width));
