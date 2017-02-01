@@ -241,13 +241,14 @@ class LighthouseReport {
   }
 }
 
+// Allow Node code to use require(). Browser code can use the LighthouseReport
+// class as is.
 let ReportGenerator;
 if (typeof module !== 'undefined' && module.exports) {
-  // Browser code can just use the LighthouseReport class as-is. If we're in Node,
-  // allow require().
   module.exports = LighthouseReport;
 
   ReportGenerator = require('../../../lighthouse-core/report/report-generator');
+  // In browser code, the main needs to define this global method.
   // TODO: We only need getFilenamePrefix from asset-saver. Tree shake!
   window.getFilenamePrefix = require('../../../lighthouse-core/lib/asset-saver').getFilenamePrefix;
 }
