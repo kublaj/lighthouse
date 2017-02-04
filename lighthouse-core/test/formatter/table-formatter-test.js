@@ -26,7 +26,7 @@ describe('TableFormatter', () => {
   const extendedInfo = {
     tableHeadings: {
       url: 'URL', lineCol: 'Line/col', code: 'Snippet', isEval: 'Eval\'d?',
-      pre: 'Code'},
+      pre: 'Code', previewUrl: 'Preview'},
     results: [{
       url: 'http://example.com',
       line: 123,
@@ -34,6 +34,8 @@ describe('TableFormatter', () => {
       code: 'code snippet',
       isEval: true,
       pre: 'pre snippet',
+      previewUrl: 'http://example.com/i.jpg',
+      mimeType: 'image/jpeg',
     }]
   };
 
@@ -56,15 +58,17 @@ describe('TableFormatter', () => {
     assert.equal(table.rows[0].cols[2], '\`code snippet\`');
     assert.equal(table.rows[0].cols[3], 'yes');
     assert.equal(table.rows[0].cols[4], '\`\`\`\npre snippet\`\`\`');
+    assert.equal(table.rows[0].cols[5],
+        '[![Image preview](http://example.com/i.jpg "Image preview")](http://example.com/i.jpg)');
   });
 
   it('generates valid pretty output', () => {
     const pretty = TableFormatter.getFormatter('pretty');
     const output = pretty(extendedInfo);
     assert.ok(output.includes(
-        '      URL LINE/COL SNIPPET EVAL\'D? CODE\n'), 'prints table headings');
+        '      URL LINE/COL SNIPPET EVAL\'D? CODE PREVIEW\n'), 'prints table headings');
     assert.ok(output.includes(
-        '      http://example.com 123:456 yes \n'), 'prints cells');
+        '      http://example.com 123:456 - yes - - \n'), 'prints cells');
   });
 
   it('generates valid html output', () => {

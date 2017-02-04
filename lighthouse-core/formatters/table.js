@@ -43,11 +43,13 @@ class Table extends Formatter {
           table.rows.forEach(row => {
             output += '      ';
             row.cols.forEach(col => {
-              // Omit code snippet cols.
-              if (!col || col.startsWith('`') && col.endsWith('`')) {
-                return;
+              // Omit code snippet cols and image previews.
+              if (!col || col.startsWith('`') && col.endsWith('`') ||
+                  col.startsWith('[![Image preview]')) {
+                output += '- ';
+              } else {
+                output += `${col} `;
               }
-              output += `${col} `;
             });
             output += '\n';
           });
