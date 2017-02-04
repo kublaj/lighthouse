@@ -24,14 +24,12 @@
  */
 'use strict';
 
-const Audit = require('../audit');
+const Audit = require('./byte-efficiency-audit');
 const URL = require('../../lib/url-shim');
-const Formatter = require('../../formatters/formatter');
 
-const KB_IN_BYTES = 1024;
-const IGNORE_THRESHOLD_IN_BYTES = 2 * KB_IN_BYTES;
-const TOTAL_WASTED_BYTES_THRESHOLD = 100 * KB_IN_BYTES;
-const WEBP_ALREADY_OPTIMIZED_THRESHOLD_IN_BYTES = 50 * KB_IN_BYTES;
+const IGNORE_THRESHOLD_IN_BYTES = 2048;
+const TOTAL_WASTED_BYTES_THRESHOLD = 100 * 1024;
+const WEBP_ALREADY_OPTIMIZED_THRESHOLD_IN_BYTES = 50 * 1024;
 
 class UsesOptimizedImages extends Audit {
   /**
@@ -53,37 +51,21 @@ class UsesOptimizedImages extends Audit {
   /**
    * @param {{originalSize: number, webpSize: number, jpegSize: number}} image
    * @param {string} type
-   * @return {{bytes: number, kb: number, percent: number}}
+   * @return {{bytes: number, percent: number}}
    */
   static computeSavings(image, type) {
     const bytes = image.originalSize - image[type + 'Size'];
-    const kb = Math.round(bytes / KB_IN_BYTES);
     const percent = Math.round(100 * bytes / image.originalSize);
-    return {bytes, kb, percent};
+    return {bytes, percent};
   }
 
   /**
    * @param {!Artifacts} artifacts
-   * @return {!AuditResult}
+   * @return {{results: !Array<Object>, tableHeadings: Object,
+   *     passes: boolean=, debugString: string=}}
    */
-  static audit(artifacts) {
-    const networkRecords = artifacts.networkRecords[Audit.DEFAULT_PASS];
-    return artifacts.requestNetworkThroughput(networkRecords).then(networkThroughput => {
-      return UsesOptimizedImages.audit_(artifacts, networkThroughput);
-    });
-  }
-
-  /**
-   * @param {!Artifacts} artifacts
-   * @param {number} networkThroughput
-   * @return {!AuditResult}
-   */
-  static audit_(artifacts, networkThroughput) {
+  static audit_(artifacts) {
     const images = artifacts.OptimizedImages;
-
-    if (images.rawValue === -1) {
-      return UsesOptimizedImages.generateAuditResult(images);
-    }
 
     const failedImages = [];
     let totalWastedBytes = 0;
@@ -97,12 +79,13 @@ class UsesOptimizedImages extends Audit {
         return results;
       }
 
-      const originalKb = Math.round(image.originalSize / KB_IN_BYTES);
       const url = URL.getDisplayName(image.url);
       const webpSavings = UsesOptimizedImages.computeSavings(image, 'webp');
 
       if (webpSavings.bytes > WEBP_ALREADY_OPTIMIZED_THRESHOLD_IN_BYTES) {
         hasAllEfficientImages = false;
+      } else if (webpSavings.bytes < IGNORE_THRESHOLD_IN_BYTES) {
+        return results;
       }
 
       let jpegSavingsLabel;
@@ -115,22 +98,16 @@ class UsesOptimizedImages extends Audit {
       }
 
       totalWastedBytes += webpSavings.bytes;
+
       results.push({
         url,
-        total: `${originalKb} KB`,
+        totalBytes: image.originalSize,
+        wastedBytes: webpSavings.bytes,
         webpSavings: `${webpSavings.percent}%`,
         jpegSavings: jpegSavingsLabel
       });
       return results;
     }, []);
-
-    let displayValue = '';
-    if (totalWastedBytes > 1000) {
-      const totalWastedKb = Math.round(totalWastedBytes / KB_IN_BYTES);
-      // Only round to nearest 10ms since we're relatively hand-wavy
-      const totalWastedMs = Math.round(totalWastedBytes / networkThroughput * 100) * 10;
-      displayValue = `${totalWastedKb}KB (~${totalWastedMs}ms) potential savings`;
-    }
 
     let debugString;
     if (failedImages.length) {
@@ -138,23 +115,18 @@ class UsesOptimizedImages extends Audit {
       debugString = `Lighthouse was unable to decode some of your images: ${urls.join(', ')}`;
     }
 
-    return UsesOptimizedImages.generateAuditResult({
-      displayValue,
+    return {
+      passes: hasAllEfficientImages && totalWastedBytes < TOTAL_WASTED_BYTES_THRESHOLD,
       debugString,
-      rawValue: hasAllEfficientImages && totalWastedBytes < TOTAL_WASTED_BYTES_THRESHOLD,
-      extendedInfo: {
-        formatter: Formatter.SUPPORTED_FORMATS.TABLE,
-        value: {
-          results,
-          tableHeadings: {
-            url: 'URL',
-            total: 'Original (KB)',
-            webpSavings: 'WebP Savings (%)',
-            jpegSavings: 'JPEG Savings (%)',
-          }
-        }
+      results,
+      tableHeadings: {
+        url: 'URL',
+        totalKb: 'Original (KB)',
+        wastedKb: 'Savings (KB)',
+        webpSavings: 'WebP Savings (%)',
+        jpegSavings: 'JPEG Savings (%)',
       }
-    });
+    };
   }
 }
 

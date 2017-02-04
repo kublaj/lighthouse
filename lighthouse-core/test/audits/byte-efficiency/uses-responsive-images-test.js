@@ -15,7 +15,8 @@
  */
 'use strict';
 
-const UsesResponsiveImagesAudit = require('../../../audits/dobetterweb/uses-responsive-images.js');
+const UsesResponsiveImagesAudit =
+    require('../../../audits/byte-efficiency/uses-responsive-images.js');
 const assert = require('assert');
 
 /* eslint-env mocha */
@@ -62,9 +63,8 @@ describe('Page uses responsive images', () => {
       ],
     });
 
-    assert.equal(auditResult.rawValue, false);
-    assert.equal(auditResult.extendedInfo.value.results.length, 1);
-    assert.ok(/45KB/.test(auditResult.displayValue), 'computes total kb');
+    assert.equal(auditResult.passes, false);
+    assert.equal(auditResult.results.length, 1);
   });
 
   it('fails when an image is much larger than DPR displayed size', () => {
@@ -79,9 +79,8 @@ describe('Page uses responsive images', () => {
       ],
     });
 
-    assert.equal(auditResult.rawValue, false);
-    assert.equal(auditResult.extendedInfo.value.results.length, 1);
-    assert.ok(/80KB/.test(auditResult.displayValue), 'compute total kb');
+    assert.equal(auditResult.passes, false);
+    assert.equal(auditResult.results.length, 1);
   });
 
   it('handles images without network record', () => {
@@ -96,8 +95,8 @@ describe('Page uses responsive images', () => {
       ],
     });
 
-    assert.equal(auditResult.rawValue, true);
-    assert.equal(auditResult.extendedInfo.value.results.length, 0);
+    assert.equal(auditResult.passes, true);
+    assert.equal(auditResult.results.length, 0);
   });
 
   it('passes when all images are not wasteful', () => {
@@ -123,7 +122,7 @@ describe('Page uses responsive images', () => {
       ],
     });
 
-    assert.equal(auditResult.rawValue, true);
-    assert.equal(auditResult.extendedInfo.value.results.length, 2);
+    assert.equal(auditResult.passes, true);
+    assert.equal(auditResult.results.length, 2);
   });
 });

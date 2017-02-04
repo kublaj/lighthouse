@@ -15,7 +15,8 @@
  */
 'use strict';
 
-const UsesOptimizedImagesAudit = require('../../../audits/dobetterweb/uses-optimized-images.js');
+const UsesOptimizedImagesAudit =
+    require('../../../audits/byte-efficiency/uses-optimized-images.js');
 const assert = require('assert');
 
 function generateImage(type, originalSize, webpSize, jpegSize) {
@@ -37,31 +38,29 @@ function generateImage(type, originalSize, webpSize, jpegSize) {
 /* eslint-env mocha */
 
 describe('Page uses optimized images', () => {
-  it('fails when gatherer returns error', () => {
-    const debugString = 'All image optimizations failed.';
-    const auditResult = UsesOptimizedImagesAudit.audit_({
-      OptimizedImages: {
-        rawValue: -1,
-        debugString: debugString
-      },
-    });
-    assert.equal(auditResult.rawValue, -1);
-    assert.equal(auditResult.debugString, debugString);
-  });
-
-  it('fails when one jpeg image is unoptimized', () => {
+  it('passes when there is only insignificant savings', () => {
     const auditResult = UsesOptimizedImagesAudit.audit_({
       OptimizedImages: [
         generateImage('jpeg', 5000, 4000, 4500),
       ],
     });
 
-    assert.equal(auditResult.rawValue, false);
+    assert.equal(auditResult.passes, true);
+    assert.equal(auditResult.results.length, 0);
+  });
 
-    const headings = auditResult.extendedInfo.value.tableHeadings;
+  it('fails when one jpeg image is unoptimized', () => {
+    const auditResult = UsesOptimizedImagesAudit.audit_({
+      OptimizedImages: [
+        generateImage('jpeg', 50000, 40000, 45000),
+      ],
+    });
+
+    const headings = auditResult.tableHeadings;
+    assert.equal(auditResult.passes, false);
     assert.deepEqual(Object.keys(headings).map(key => headings[key]),
-                     ['URL', 'Original (KB)', 'WebP Savings (%)', 'JPEG Savings (%)'],
-                     'table headings are correct and in order');
+        ['URL', 'Original (KB)', 'Savings (KB)', 'WebP Savings (%)', 'JPEG Savings (%)'],
+        'table headings are correct and in order');
   });
 
   it('fails when one png image is highly unoptimized', () => {
@@ -71,7 +70,7 @@ describe('Page uses optimized images', () => {
       ],
     });
 
-    assert.equal(auditResult.rawValue, false);
+    assert.equal(auditResult.passes, false);
   });
 
   it('fails when images are collectively unoptimized', () => {
@@ -85,7 +84,7 @@ describe('Page uses optimized images', () => {
       ],
     });
 
-    assert.equal(auditResult.rawValue, false);
+    assert.equal(auditResult.passes, false);
   });
 
   it('passes when all images are sufficiently optimized', () => {
@@ -99,7 +98,7 @@ describe('Page uses optimized images', () => {
       ],
     });
 
-    assert.equal(auditResult.rawValue, true);
+    assert.equal(auditResult.passes, true);
   });
 
   it('limits output of data URIs', () => {
@@ -108,7 +107,7 @@ describe('Page uses optimized images', () => {
       OptimizedImages: [image],
     });
 
-    const actualUrl = auditResult.extendedInfo.value.results[0].url;
+    const actualUrl = auditResult.results[0].url;
     assert.ok(actualUrl.length < image.url.length, `${actualUrl} >= ${image.url}`);
   });
 

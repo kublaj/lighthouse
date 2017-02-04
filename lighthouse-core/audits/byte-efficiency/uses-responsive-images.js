@@ -24,11 +24,10 @@
   */
 'use strict';
 
-const Audit = require('../audit');
+const Audit = require('./byte-efficiency-audit');
 const URL = require('../../lib/url-shim');
-const Formatter = require('../../formatters/formatter');
 
-const KB_IN_BYTES = 1024;
+const IGNORE_THRESHOLD_IN_BYTES = 2048;
 const WASTEFUL_THRESHOLD_AS_RATIO = 0.1;
 
 class UsesResponsiveImages extends Audit {
@@ -39,7 +38,7 @@ class UsesResponsiveImages extends Audit {
     return {
       category: 'Images',
       name: 'uses-responsive-images',
-      description: 'Has appropriately sized images',
+      description: 'Avoids oversized images',
       helpText:
         'Image sizes served should be based on the device display size to save network bytes. ' +
         'Learn more about [responsive images](https://developers.google.com/web/fundamentals/design-and-ui/media/images) ' +
@@ -60,50 +59,35 @@ class UsesResponsiveImages extends Audit {
     const usedPixelsFullDPR = usedPixels * Math.pow(DPR, 2);
     const wastedRatio = 1 - (usedPixels / actualPixels);
     const wastedRatioFullDPR = 1 - (usedPixelsFullDPR / actualPixels);
+    const totalBytes = image.networkRecord.resourceSize;
+    const wastedBytes = Math.round(totalBytes * wastedRatio);
 
     if (!Number.isFinite(wastedRatio)) {
       return new Error(`Invalid image sizing information ${url}`);
-    } else if (wastedRatio <= 0) {
+    } else if (wastedRatio <= 0 || wastedBytes < IGNORE_THRESHOLD_IN_BYTES) {
       // Image did not have sufficient resolution to fill display at DPR=1
       return null;
     }
 
-    const totalBytes = image.networkRecord.resourceSize;
-    const wastedBytes = Math.round(totalBytes * wastedRatio);
-
     return {
+      url,
+      totalBytes,
       wastedBytes,
       isWasteful: wastedRatioFullDPR > WASTEFUL_THRESHOLD_AS_RATIO,
-      result: {
-        url,
-        totalKb: Math.round(totalBytes / KB_IN_BYTES) + ' KB',
-        potentialSavings: Math.round(100 * wastedRatio) + '%'
-      },
+      potentialSavings: Math.round(100 * wastedRatio) + '%'
     };
   }
 
   /**
    * @param {!Artifacts} artifacts
-   * @return {!AuditResult}
+   * @return {{results: !Array<Object>, tableHeadings: Object,
+   *     passes: boolean=, debugString: string=}}
    */
-  static audit(artifacts) {
-    const networkRecords = artifacts.networkRecords[Audit.DEFAULT_PASS];
-    return artifacts.requestNetworkThroughput(networkRecords).then(networkThroughput => {
-      return UsesResponsiveImages.audit_(artifacts, networkThroughput);
-    });
-  }
-
-  /**
-   * @param {!Artifacts} artifacts
-   * @param {number} networkThroughput
-   * @return {!AuditResult}
-   */
-  static audit_(artifacts, networkThroughput) {
+  static audit_(artifacts) {
     const images = artifacts.ImageUsage;
     const contentWidth = artifacts.ContentWidth;
 
     let debugString;
-    let totalWastedBytes = 0;
     let hasWastefulImage = false;
     const DPR = contentWidth.devicePixelRatio;
     const results = images.reduce((results, image) => {
@@ -120,35 +104,21 @@ class UsesResponsiveImages extends Audit {
       }
 
       hasWastefulImage = hasWastefulImage || processed.isWasteful;
-      totalWastedBytes += processed.wastedBytes;
-      results.push(processed.result);
+      results.push(processed);
       return results;
     }, []);
 
-    let displayValue;
-    if (results.length) {
-      const totalWastedKB = Math.round(totalWastedBytes / KB_IN_BYTES);
-      // Only round to nearest 10ms since we're relatively hand-wavy
-      const totalWastedMs = Math.round(totalWastedBytes / networkThroughput * 100) * 10;
-      displayValue = `${totalWastedKB}KB (~${totalWastedMs}ms) potential savings`;
-    }
-
-    return UsesResponsiveImages.generateAuditResult({
+    return {
       debugString,
-      displayValue,
-      rawValue: !hasWastefulImage,
-      extendedInfo: {
-        formatter: Formatter.SUPPORTED_FORMATS.TABLE,
-        value: {
-          results,
-          tableHeadings: {
-            url: 'URL',
-            totalKb: 'Original (KB)',
-            potentialSavings: 'Potential Savings (%)'
-          }
-        }
+      passes: !hasWastefulImage,
+      results,
+      tableHeadings: {
+        url: 'URL',
+        totalKb: 'Original (KB)',
+        wastedKb: 'Savings (KB)',
+        potentialSavings: 'Potential Savings (%)'
       }
-    });
+    };
   }
 }
 
