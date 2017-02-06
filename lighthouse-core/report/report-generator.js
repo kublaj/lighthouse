@@ -224,6 +224,7 @@ class ReportGenerator {
     } else {
       return [
         fs.readFileSync(path.join(__dirname, './scripts/logger.js'), 'utf8'),
+        fs.readFileSync(path.join(__dirname, '../lib/file-namer.js'), 'utf8'),
         fs.readFileSync(path.join(__dirname, './scripts/lighthouse-report.js'), 'utf8')
       ];
     }

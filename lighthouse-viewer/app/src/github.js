@@ -21,9 +21,7 @@
 
 const idb = require('idb-keyval');
 const FirebaseAuth = require('./firebase-auth');
-
-// TODO: We only need getFilenamePrefix from asset-saver. Tree shake!
-const getFilenamePrefix = require('../../../lighthouse-core/lib/asset-saver').getFilenamePrefix;
+const getFilenamePrefix = require('../../../lighthouse-core/lib/file-namer.js').getFilenamePrefix;
 
 /**
  * Wrapper around the GitHub API for reading/writing gists.
