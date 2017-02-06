@@ -27,7 +27,7 @@ const Formatter = require('../../formatters/formatter');
 const KB_IN_BYTES = 1024;
 const TOTAL_WASTED_BYTES_THRESHOLD = 100 * KB_IN_BYTES;
 
-class CompressesResponses extends Audit {
+class ResponsesAreCompressed extends Audit {
   /**
    * @return {!AuditMeta}
    */
@@ -50,7 +50,7 @@ class CompressesResponses extends Audit {
     const networkRecords = artifacts.networkRecords[Audit.DEFAULT_PASS];
 
     return artifacts.requestNetworkThroughput(networkRecords).then(networkThroughput => {
-      return CompressesResponses.audit_(artifacts, networkThroughput);
+      return ResponsesAreCompressed.audit_(artifacts, networkThroughput);
     });
   }
 
@@ -95,7 +95,7 @@ class CompressesResponses extends Audit {
       displayValue = `${totalWastedKb}KB (~${totalWastedMs}ms) potential savings`;
     }
 
-    return CompressesResponses.generateAuditResult({
+    return ResponsesAreCompressed.generateAuditResult({
       displayValue,
       debugString,
       rawValue: totalWastedBytes < TOTAL_WASTED_BYTES_THRESHOLD,
@@ -114,4 +114,4 @@ class CompressesResponses extends Audit {
   }
 }
 
-module.exports = CompressesResponses;
+module.exports = ResponsesAreCompressed;

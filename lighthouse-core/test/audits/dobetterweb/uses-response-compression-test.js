@@ -15,15 +15,15 @@
  */
 'use strict';
 
-const UsesResponseCompressionAudit =
-  require('../../../audits/dobetterweb/uses-response-compression.js');
+const ResponsesAreCompressedAudit =
+  require('../../../audits/dobetterweb/uses-request-compression.js');
 const assert = require('assert');
 
 function generateResponse(filename, type, originalSize, gzipSize) {
   return {
     url: `http://google.com/${filename}`,
     mimeType: `${type}`,
-    originalSize,
+    resourceSize: originalSize,
     gzipSize,
   };
 }
@@ -31,12 +31,12 @@ function generateResponse(filename, type, originalSize, gzipSize) {
 /* eslint-env mocha */
 
 describe('Page uses optimized responses', () => {
-  it('fails when images are collectively unoptimized', () => {
-    const auditResult = UsesResponseCompressionAudit.audit_({
+  it('fails when reponses are collectively unoptimized', () => {
+    const auditResult = ResponsesAreCompressedAudit.audit_({
       ResponseCompression: [
         generateResponse('index.js', 'text/javascript', 10000, 9000),
-        generateResponse('index.css', 'text/css', 5000, 3000),
-        generateResponse('index.json', 'application/json', 1500, 50),
+        generateResponse('index.css', 'text/css', 5000, 3700),
+        generateResponse('index.json', 'application/json', 204800, 102400),
       ],
     });
 
@@ -44,7 +44,7 @@ describe('Page uses optimized responses', () => {
   });
 
   it('passes when all reponses are sufficiently optimized', () => {
-    const auditResult = UsesResponseCompressionAudit.audit_({
+    const auditResult = ResponsesAreCompressedAudit.audit_({
       ResponseCompression: [
         generateResponse('index.js', 'text/javascript', 100000, 91000),
         generateResponse('index.css', 'text/css', 5000, 4000),

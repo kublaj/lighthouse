@@ -28,7 +28,7 @@ const traceData = {
     {
       _url: 'http://google.com/index.js',
       _mimeType: 'text/javascript',
-      _resourceSize: 10,
+      _resourceSize: 9,
       _resourceType: {
         _isTextType: true,
       },
@@ -36,33 +36,37 @@ const traceData = {
         name: 'Content-Encoding',
         value: 'gzip',
       }],
+      content: 'aaabbbccc',
     },
     {
       _url: 'http://google.com/index.css',
       _mimeType: 'text/css',
-      _resourceSize: 9,
+      _resourceSize: 6,
       _resourceType: {
         _isTextType: true,
       },
       _responseHeaders: [],
+      content: 'abcabc',
     },
     {
       _url: 'http://google.com/index.json',
       _mimeType: 'application/json',
-      _resourceSize: 12,
+      _resourceSize: 7,
       _resourceType: {
         _isTextType: true,
       },
       _responseHeaders: [],
+      content: '1234567',
     },
     {
       _url: 'http://google.com/index.jpg',
       _mimeType: 'images/jpg',
-      _resourceSize: 13,
+      _resourceSize: 10,
       _resourceType: {
         _isTextType: false,
       },
       _responseHeaders: [],
+      content: 'aaaaaaaaaa',
     }
   ]
 };
@@ -77,10 +81,12 @@ describe('Optimized responses', () => {
   });
 
   it('returns only text and non encoded responses', () => {
-    const artifact = optimizedResponses.afterPass(options, traceData);
-    assert.equal(artifact.length, 2);
-    assert.ok(/index\.css/.test(artifact[0].url));
-    assert.ok(/index\.json/.test(artifact[1].url));
+    return optimizedResponses.afterPass(options, createNetworkRequests(traceData))
+      .then(artifact => {
+        assert.equal(artifact.length, 2);
+        assert.ok(/index\.css$/.test(artifact[0].url));
+        assert.ok(/index\.json$/.test(artifact[1].url));
+      });
   });
 
   it('computes sizes', () => {
@@ -89,9 +95,34 @@ describe('Optimized responses', () => {
       assert.equal(stat.gzipSize, gzip);
     };
 
-    const artifact = optimizedResponses.afterPass(options, traceData);
-    assert.equal(artifact.length, 2);
-    checkSizes(artifact[0], 9, 6);
-    checkSizes(artifact[1], 12, 8);
+    return optimizedResponses.afterPass(options, createNetworkRequests(traceData))
+      .then(artifact => {
+        assert.equal(artifact.length, 2);
+        checkSizes(artifact[0], 6, 26);
+        checkSizes(artifact[1], 7, 27);
+      });
   });
+
+ // Change into SDK.networkRequest when examples are ready
+  function createNetworkRequests(traceData) {
+    traceData.networkRecords = traceData.networkRecords.map(record => {
+      record.url = record._url;
+      record.mimeType = record._mimeType;
+      record.resourceSize = record._resourceSize;
+      record.responseHeaders = record._responseHeaders;
+      record.requestContent = () => Promise.resolve(record.content);
+      record.resourceType = () => {
+        return Object.assign(
+          {
+            isTextType: () => record._resourceType._isTextType
+          },
+          record._resourceType
+        );
+      };
+
+      return record;
+    });
+
+    return traceData;
+  }
 });

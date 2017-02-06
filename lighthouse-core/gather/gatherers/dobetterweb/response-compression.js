@@ -22,6 +22,7 @@
 'use strict';
 
 const Gatherer = require('../gatherer');
+const zlib = require('zlib');
 
 const compressionTypes = ['gzip', 'br', 'deflate'];
 
@@ -32,19 +33,22 @@ class ResponseCompression extends Gatherer {
    */
   static filterUnoptimizedResponses(networkRecords) {
     return networkRecords.reduce((prev, record) => {
-      const isTextBasedResource = record._resourceType && record._resourceType._isTextType;
-      const isContentEncoded = isTextBasedResource &&
-        record._resourceSize &&
-        !record._responseHeaders.find(header =>
-          header.name.toLowerCase() === 'content-encoding' &&
-          compressionTypes.includes(header.value)
-        );
+      const isTextBasedResource = record.resourceType() && record.resourceType().isTextType();
+      if (!isTextBasedResource || !record.resourceSize) {
+        return prev;
+      }
 
-      if (isTextBasedResource && isContentEncoded) {
+      const isContentEncoded = record.responseHeaders.find(header =>
+        header.name.toLowerCase() === 'content-encoding' &&
+        compressionTypes.includes(header.value)
+      );
+
+      if (!isContentEncoded) {
         prev.push({
-          url: record._url,
-          mimeType: record._mimeType,
-          resourceSize: record._resourceSize,
+          record: record,
+          url: record.url,
+          mimeType: record.mimeType,
+          resourceSize: record.resourceSize,
         });
       }
 
@@ -56,14 +60,25 @@ class ResponseCompression extends Gatherer {
     const networkRecords = traceData.networkRecords;
     const textRecords = ResponseCompression.filterUnoptimizedResponses(networkRecords);
 
-    return textRecords.map(record => {
-      // GZIP saving is predictable (@see https://cs.chromium.org/chromium/src/third_party/WebKit/Source/devtools/front_end/audits/AuditRules.js?q=f:AuditRules+gzip&sq=package:chromium&l=97)
-      const gzipSize = record.resourceSize * 2 / 3;
+    return Promise.all(textRecords.map(record => {
+      return record.record.requestContent().then(content => {
+        // if we don't have any content gzipSize is set to 0
+        if (!content) {
+          record.gzipSize = 0;
 
-      return Object.assign({}, {
-        gzipSize,
-      }, record);
-    });
+          return record;
+        }
+
+        return new Promise((resolve) => {
+          return zlib.gzip(content, (err, res) => {
+            // get gzip size
+            record.gzipSize = Buffer.byteLength(res, 'utf8');
+
+            resolve(record);
+          });
+        });
+      });
+    }));
   }
 }
 
