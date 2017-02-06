@@ -144,8 +144,8 @@ class UsesOptimizedImages extends Audit {
         value: {
           results,
           tableHeadings: {
-            url: 'URL',
             previewUrl: '',
+            url: 'URL',
             total: 'Original (KB)',
             webpSavings: 'WebP Savings (%)',
             jpegSavings: 'JPEG Savings (%)',

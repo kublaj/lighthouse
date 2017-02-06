@@ -81,6 +81,7 @@ describe('TableFormatter', () => {
     const output = template(extendedInfo).split('\n').join('');
     assert.ok(output.match('<table class="table_list'), 'creates a table');
     assert.ok(output.match('multicolumn'), 'adds multicolumn class for large tables');
+    assert.ok(output.match('class="preview-image"'), 'renders image preview');
 
     const extendedInfoShort = {
       tableHeadings: {url: 'URL', lineCol: 'Line/col'},
@@ -88,6 +89,8 @@ describe('TableFormatter', () => {
     };
     const output2 = template(extendedInfoShort).split('\n').join('');
     assert.ok(!output2.match('multicolumn"'), 'does not add multicolumn class for small tables');
+    assert.ok(!output2.match('class="preview-image'),
+                             'does not add preview-image class if table does not have images');
   });
 
   it('handles missing values', () => {

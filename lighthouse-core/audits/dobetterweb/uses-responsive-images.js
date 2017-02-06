@@ -147,8 +147,8 @@ class UsesResponsiveImages extends Audit {
         value: {
           results,
           tableHeadings: {
-            url: 'URL',
             previewUrl: '',
+            url: 'URL',
             totalKb: 'Original (KB)',
             potentialSavings: 'Potential Savings (%)'
           }
