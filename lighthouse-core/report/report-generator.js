@@ -210,7 +210,15 @@ class ReportGenerator {
    * @return {!Array<string>} an array of CSS
    */
   getReportCSS() {
-    return [fs.readFileSync(path.join(__dirname, './styles/report.css'), 'utf8')];
+    const partialPath = path.join(__dirname, '../formatters/partials');
+    const partialStyles = fs.readdirSync(partialPath)
+        .filter(f => /\.css$/.test(f))
+        .map(f => fs.readFileSync(path.join(partialPath, f), 'utf8'));
+
+    return [
+      fs.readFileSync(path.join(__dirname, './styles/report.css'), 'utf8'),
+      ...partialStyles
+    ];
   }
 
   /**
