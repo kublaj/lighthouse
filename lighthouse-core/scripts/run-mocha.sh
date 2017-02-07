@@ -15,5 +15,7 @@ elif [ "$flag" == '--viewer' ]; then
 elif [ "$flag" == '--core' ]; then
     _runmocha 'lighthouse-core'
 else
-    _runmocha 'lighthouse-cli' && _runmocha 'lighthouse-core' && _runmocha 'lighthouse-viewer'
+    echo "lighthouse-core tests" && _runmocha 'lighthouse-core' && \
+    echo "lighthouse-cli tests" && _runmocha 'lighthouse-cli' && \
+    echo "lighthouse-viewer tests" && _runmocha 'lighthouse-viewer'
 fi
