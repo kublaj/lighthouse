@@ -123,8 +123,10 @@ class UsesResponsiveImages extends Audit {
       totalWastedBytes += processed.wastedBytes;
 
       results.push(Object.assign({
-        previewUrl: image.networkRecord.url,
-        mimeType: image.networkRecord.mimeType
+        preview: {
+          url: image.networkRecord.url,
+          mimeType: image.networkRecord.mimeType
+        }
       }, processed.result));
 
       return results;
@@ -147,7 +149,7 @@ class UsesResponsiveImages extends Audit {
         value: {
           results,
           tableHeadings: {
-            previewUrl: '',
+            preview: '',
             url: 'URL',
             totalKb: 'Original (KB)',
             potentialSavings: 'Potential Savings (%)'

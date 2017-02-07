@@ -26,7 +26,7 @@ describe('TableFormatter', () => {
   const extendedInfo = {
     tableHeadings: {
       url: 'URL', lineCol: 'Line/col', code: 'Snippet', isEval: 'Eval\'d?',
-      pre: 'Code', previewUrl: 'Preview'},
+      pre: 'Code', preview: 'Preview'},
     results: [{
       url: 'http://example.com',
       line: 123,
@@ -34,8 +34,7 @@ describe('TableFormatter', () => {
       code: 'code snippet',
       isEval: true,
       pre: 'pre snippet',
-      previewUrl: 'http://example.com/i.jpg',
-      mimeType: 'image/jpeg',
+      preview: {url: 'http://example.com/i.jpg', mimeType: 'image/jpeg'}
     }]
   };
 

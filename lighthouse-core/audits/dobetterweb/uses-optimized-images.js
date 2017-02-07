@@ -112,8 +112,7 @@ class UsesOptimizedImages extends Audit {
       totalWastedBytes += webpSavings.bytes;
       results.push({
         url: URL.getDisplayName(image.url),
-        previewUrl: image.url,
-        mimeType: image.mimeType,
+        preview: {url: image.url, mimeType: image.mimeType},
         total: `${originalKb} KB`,
         webpSavings: `${webpSavings.percent}%`,
         jpegSavings: jpegSavingsLabel
@@ -144,7 +143,7 @@ class UsesOptimizedImages extends Audit {
         value: {
           results,
           tableHeadings: {
-            previewUrl: '',
+            preview: '',
             url: 'URL',
             total: 'Original (KB)',
             webpSavings: 'WebP Savings (%)',
