@@ -210,8 +210,8 @@ class ReportGenerator {
    * @return {!Array<string>} an array of CSS
    */
   getReportCSS() {
-    // Cannot dynamically create paths because fs.readdirSync doesn't browserify
-    // well. See https://github.com/substack/brfs/issues/36.
+    // Cannot DRY this up and dynamically create paths because fs.readdirSync
+    // doesn't browserify well with a variable path. See https://github.com/substack/brfs/issues/36.
     const partialStyles = [
       fs.readFileSync(path.join(__dirname, '../formatters/partials',
                       'critical-request-chains.css'), 'utf8'),
