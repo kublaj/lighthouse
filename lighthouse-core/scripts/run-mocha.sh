@@ -2,8 +2,10 @@
 
 flag=$1
 
+reporter=$([ "$CI" == true ] && echo "dot" || echo "landing")
+
 function _runmocha() {
-  mocha --reporter landing $2 $(find $1/test -name '*-test.js') --timeout 60000;
+  mocha --reporter $reporter $2 $(find $1/test -name '*-test.js') --timeout 60000;
 }
 
 if [ "$flag" == '--watch' ]; then
